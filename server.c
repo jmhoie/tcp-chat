@@ -1,6 +1,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -8,13 +9,21 @@
 
 #define PORT 8080
 #define BUF_SIZE 1024
+#define MAX_CLIENTS 5
+
+int clients[MAX_CLIENTS];
+int client_count = 0;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+void* handle_client(void *arg){
+    
+}
 
 int main(){
-    int sockfd, connfd;
-    struct sockaddr_in server_addr, client_addr;
-    socklen_t server_addrlen, client_addrlen;
+    int sockfd;
+    struct sockaddr_in server_addr;
+    socklen_t server_addrlen;
     server_addrlen = sizeof(server_addr);
-    client_addrlen = sizeof(client_addr);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -42,24 +51,29 @@ int main(){
     }
     printf("server listening on %s:%d...\n\n", inet_ntoa(server_addr.sin_addr), PORT);
 
-    connfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_addrlen);  
-    if (connfd < 0) {
-        perror("accept FAILED\n");
-        close(sockfd);
-        exit(EXIT_FAILURE);
+    while (1) {
+        struct socakddr_in client_addr;
+        socklen_t client_addrlen = sizeof(client_addr);
+
+        int clientfd = malloc(sizeof(int));
+        clientfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_addrlen);  
+        if (*clientfd < 0) {
+            perror("accept FAILED\n");
+            free(clientfd)
+            exit(EXIT_FAILURE);
+        }
+        printf("accepted connection from: %s\n", inet_ntoa(client_addr.sin_addr));
+
+        pthread_mutex_lock(&lock);
+        if (client_count < MAX_CLIENTS) {
+            clients[client_count++] = *clientfd
+        } 
+        pthread_mutex_unlock(&lock);
+
+        pthread_t thread_id;
+        pthread_create(&thread_id, NULL, handle_client, clientfd);
+        pthread_detach(&thread_id);
     }
-    printf("accepted connection from: %s\n", inet_ntoa(client_addr.sin_addr));
-
-    char buf[BUF_SIZE];
-    memset(&buf, 0, BUF_SIZE);
-
-    ssize_t bytes_received = read(connfd, buf, BUF_SIZE);
-    printf("received %zd bytes\n", bytes_received);
-    printf("from %s: %s", inet_ntoa(client_addr.sin_addr), buf);
-    memset(&buf, 0, bytes_received+1);
-
-    char *message = "server reply";
-    write(connfd, message, strlen(message));
 
     close(connfd);
     close(sockfd);
