@@ -13,17 +13,31 @@
 
 int clients[MAX_CLIENTS];
 int client_count = 0;
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-void* handle_client(void *arg){
-    
+void log_clients(){
+    if (client_count == 0) {
+        printf("[]\n");
+        return;
+    }
+
+    if (client_count == 1) {
+        printf("[ %d ]\n", clients[0]); 
+        return;
+    }
+
+    printf("clients: [ %d", clients[0]);
+    for (int i=1; i<client_count; i++) {
+        printf(", %d", clients[i]);
+    }
+    printf(" ]\n");
+
+    return;
 }
 
 int main(){
     int sockfd;
     struct sockaddr_in server_addr;
-    socklen_t server_addrlen;
-    server_addrlen = sizeof(server_addr);
+    socklen_t server_addrlen = sizeof(server_addr);
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
@@ -52,31 +66,25 @@ int main(){
     printf("server listening on %s:%d...\n\n", inet_ntoa(server_addr.sin_addr), PORT);
 
     while (1) {
-        struct socakddr_in client_addr;
+        struct sockaddr_in client_addr;
         socklen_t client_addrlen = sizeof(client_addr);
 
-        int clientfd = malloc(sizeof(int));
-        clientfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_addrlen);  
+        int *clientfd = malloc(sizeof(int));
+        *clientfd = accept(sockfd, (struct sockaddr*)&client_addr, &client_addrlen);  
         if (*clientfd < 0) {
             perror("accept FAILED\n");
-            free(clientfd)
+            free(clientfd);
             exit(EXIT_FAILURE);
         }
         printf("accepted connection from: %s\n", inet_ntoa(client_addr.sin_addr));
 
-        pthread_mutex_lock(&lock);
         if (client_count < MAX_CLIENTS) {
-            clients[client_count++] = *clientfd
-        } 
-        pthread_mutex_unlock(&lock);
+            clients[client_count++] = *clientfd;
+        }
 
-        pthread_t thread_id;
-        pthread_create(&thread_id, NULL, handle_client, clientfd);
-        pthread_detach(&thread_id);
+        log_clients();
     }
 
-    close(connfd);
     close(sockfd);
-
     return 0;
 }
